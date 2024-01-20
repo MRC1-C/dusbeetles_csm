@@ -1,113 +1,154 @@
-import Image from "next/image";
+'use client'
+import { useEffect, useState } from 'react';
+import { Layout, MenuProps, Modal, message } from 'antd';
+import { Menu } from 'antd';
+import { header } from './constant/pageHeader';
+import axios from 'axios';
+import CategoryItems from './CategoryItems';
+import ModelCategory from './ModelCategory';
+import ProductItems from './ProductItems';
+import ModelProduct from './ModelProduct';
+const { Content, Sider } = Layout;
+type MenuItem = Required<MenuProps>['items'][number];
 
-export default function Home() {
+
+
+
+const Home = () => {
+  const items = header.map(h => ({ label: h.label[0], key: h.path }))
+  const [select, setSelect] = useState<any>('home')
+  const [category, setCategory] = useState<any>([])
+  const [selectCategory, setSelectCategory] = useState<any>()
+  const [product, setProduct] = useState<any>([])
+  const [selectProduct, setSelectProduct] = useState<any>()
+  const [reload, setReload] = useState(false)
+  const [reloadP, setReloadP] = useState(false)
+
+
+  const [openCategory, setOpenCategory] = useState(false)
+  const [openProduct, setOpenProduct] = useState(false)
+
+  const onOpenCategory = () => {
+    setOpenCategory(true)
+  }
+  const closeOpenCategory = () => {
+    setOpenCategory(false)
+  }
+  const onOpenProduct = () => {
+    setOpenProduct(true)
+  }
+  const closeOpenProduct = () => {
+    setOpenProduct(false)
+  }
+
+  const onDeleteCategory = async (id: any) => {
+    axios.post('/api/category/delete', { id })
+      .then((data: any) => {
+        setSelectCategory(undefined)
+        message.success("Xoá thành công")
+        setReload(prev => !prev)
+      })
+      .catch(err => message.error("Xoá không thành công"))
+  }
+
+  const onDeleteProduct = async (id: any) => {
+    axios.post('/api/product/delete', { id })
+      .then((data: any) => {
+        setSelectProduct(undefined)
+        message.success("Xoá thành công")
+        setReloadP(prev => !prev)
+      })
+      .catch(err => message.error("Xoá không thành công"))
+  }
+
+  useEffect(() => {
+    axios.post('/api/category', {
+      page: select
+    })
+      .then((data: any) => {
+        setCategory(data.data)
+        setSelectCategory(data.data[0]?.id)
+      })
+  }, [select])
+  useEffect(() => {
+    axios.post('/api/category', {
+      page: select
+    })
+      .then((data: any) => {
+        setCategory(data.data)
+        setSelectCategory(data.data[data.data.length - 1]?.id)
+      })
+  }, [reload])
+  useEffect(() => {
+    if (selectCategory) {
+      axios.post('/api/product', {
+        category_id: selectCategory
+      })
+        .then(dataP => {
+          setProduct(dataP.data)
+          setSelectProduct(dataP.data[0]?.id)
+        })
+    }
+    else {
+      setProduct([])
+    }
+  }, [selectCategory])
+
+  useEffect(() => {
+    if (selectCategory) {
+      axios.post('/api/product', {
+        category_id: selectCategory
+      })
+        .then(dataP => {
+          setProduct(dataP.data)
+          setSelectProduct(dataP.data[dataP.data.length - 1]?.id)
+        })
+    }
+    else {
+      setProduct([])
+    }
+  }, [reloadP])
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <Layout hasSider>
+      <Sider
+        style={{
+          overflow: 'auto',
+          height: '100vh',
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
+        }}
+        className='p-3'
+        theme='light'
+      >
+        <div className='p-3 font-bold text-lg text-blue-900'>Dusbeetles</div>
+        {
+          items.map(i => (
+            <div className={`p-3 rounded-lg cursor-pointer font-semibold ${select == i.key ? "bg-blue-900 text-white" : "text-blue-900"}`} onClick={() => setSelect(i.key)} key={i.key}>{i.label}</div>
+          ))
+        }
+      </Sider>
+      <Layout className="site-layout p-3 flex flex-col gap-3 h-screen overflow-auto" style={{ marginLeft: 200 }}>
+        <div className='font-bold text-blue-900 text-xl pb-3'>
+          {header.filter(h => h.path == select)[0].label[0]}
         </div>
-      </div>
+        <div className='flex gap-3 flex-wrap'>
+          {category.map((c: any) => <CategoryItems onDeleteCategory={onDeleteCategory} onOk={onOpenCategory} setSelectCategory={setSelectCategory} target={c.id == selectCategory} key={c.id} {...c} />)}
+          <div className='p-3 rounded-lg text-sm cursor-pointer bg-gray-200' onClick={() => { setSelectCategory(undefined), onOpenCategory() }}>+ Thêm trường</div>
+        </div>
+        <div className='flex' onClick={() => { setSelectProduct(''), onOpenProduct() }}>
+          <div className='ring-1 text-blue-900 cursor-pointer bg-gray-200 font-bold ring-blue-900 p-2 rounded-lg'>+ Thêm bài</div>
+        </div>
+        <div className='gap-3 flex-wrap grid grid-cols-6'>
+          {product.map((c: any) => <ProductItems onDeleteProduct={onDeleteProduct} onOk={onOpenProduct} setSelectCategory={setSelectProduct} target={c.id == selectProduct} key={c.id} {...c} />)}
+        </div>
+      </Layout>
+      <ModelCategory setReload={setReload} page={select} category={category.filter((c: any) => c.id == selectCategory)} open={openCategory} onOk={onOpenCategory} onCancel={closeOpenCategory} />
+      <ModelProduct setReload={setReloadP} page={select} category_id={selectCategory} product={product.filter((c: any) => c.id == selectProduct)} open={openProduct} onOk={onOpenProduct} onCancel={closeOpenProduct} />
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  );
+    </Layout>
+  )
 }
+
+export default Home
